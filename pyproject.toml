@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "MuffinTrack"
+version = "1.0.0"
+authors = [
+  { name="Jessica Stultz"}
+]
+description = "A parser to convert text notes into objects to facilitate simple project management"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+    "Topic :: Text Processing",
+    "Topic :: Text Processing :: General"
+]
+license = "BSD-2-Clause"
+license-files = ["LICENSE.txt"]
+
+[project.urls]
+Homepage = "https://github.com/jstz84/MuffinTrack"
+Issues = "https://github.com/jstz84/MuffinTrack/issues"

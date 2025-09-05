@@ -1,2 +1,2 @@
 # MuffinTrack
-Text notes parser to facilitate project management
+A parser to convert text notes into objects to facilitate simple project management
