@@ -334,6 +334,8 @@ def getContent(filePath):
 def main():
     global ExportFilePath
 
+    defineLogging()
+
     ExportFilePath = input('Enter file path: ')
 
     '''Standardize the slash direction'''
@@ -348,16 +350,3 @@ def main():
             getContent(ExportFilePath)
         else:
             ExportFilePath = input('File {} does not exist. Please re-enter: '.format(ExportFilePath))
-
-if __name__=="__main__":
-    defineLogging()
-    
-    try:
-        main()
-    except Exception as e:
-        MessageToSend = 'Unhandled error: {}'.format(e)
-        errorHandling('Unhandled',MessageToSend)
-
-
-
-
