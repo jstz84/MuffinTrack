@@ -15,14 +15,13 @@ Installation
 MuffinTrack can be installed using the usual Python packaging tools.
 Example:
 
-.. code::
- pip install MuffinTrack
+`pip install MuffinTrack`
 
 Using MuffinTrack
 ========================
 
 1. Start with a .txt file of notes
-.. code::
+```
  - End Users want to start utilizing project on Dec. 1
     - Needs to be fully functional before the Thanksgiving break
  - Cost center for project from Finance for ordering?
@@ -30,12 +29,14 @@ Using MuffinTrack
  - Lyle is no longer on project team
  - Need to test configuration
  - Get director approval
+```
+
 
 2. Add prefixes to lines that need to be parsed. 
 For lines that should become "Question" objects, prefix the line with "??". 
 Important notes should have the prefix "!!". 
 Task notes should have the prefix "++".
-.. code::
+```
  - End Users want to start utilizing project on Dec. 1
     !! Needs to be fully functional before the Thanksgiving break
  ?? Cost center for project from Finance for ordering?
@@ -43,9 +44,11 @@ Task notes should have the prefix "++".
  - Lyle is no longer on project team
  ++ Need to test configuration
  ++ Get director approval
+```
 
-3. Run MuffinTrack. It will ask for the file path to the .txt file. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
-.. code::
+
+3. Run MuffinTrack as a CLI (`python3 -m MuffinTrack`). It will ask for the file path to the .txt file. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
+```
  ***Questions
  createDateTime: 2025-09-07 12:42:35.421960
  questionText:  Cost center for project from Finance for ordering?
@@ -87,6 +90,7 @@ Task notes should have the prefix "++".
  - Lyle is no longer on project team
  ++ Need to test configuration [[20250907T1]]
  ++ Get director approval [[20250907T2]]
+```
 
 4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect.
 
@@ -101,8 +105,5 @@ Additional Notes
 More resources
 ==============
 
-* Package_
-* Sources_
-
-.. _Package: TBD
-.. _Sources: https://github.com/jstz84/MuffinTrack
+* Package: https://pypi.org/project/MuffinTrack/
+* Sources: https://github.com/jstz84/MuffinTrack
