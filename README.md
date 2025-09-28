@@ -49,47 +49,52 @@ Task notes should have the prefix "++".
 
 3. Run MuffinTrack as a CLI (`python3 -m MuffinTrack`). It will ask for the file path to the .txt file. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
 ```
- ***Questions
- createDateTime: 2025-09-07 12:42:35.421960
- questionText:  Cost center for project from Finance for ordering?
- questionStatus: Open
- answer: None
- assignedId: 20250907Q1
- 
- 
- ***Important
- createDateTime: 2025-09-07 12:42:35.419175
- importantText:  Needs to be fully functional before the Thanksgiving break
- importantStatus: Active
- assignedId: 20250907I1
-
- createDateTime: 2025-09-07 12:42:35.422081
- importantText:  All equipment must be received for configuration by Oct. 1
- importantStatus: Active
- assignedId: 20250907I2
+***Questions
+createDateTime: 2025-09-27 21:03:16.509181
+questionText:  Cost center for project from Finance for ordering?
+questionStatus: Open
+answer: None
+comments: None
+assignedId: 20250927Q1
 
 
- ***Tasks
- createDateTime: 2025-09-07 12:42:35.422224
- taskText:  Need to test configuration
- taskStatus: To Do
- dueDate: None
- assignedId: 20250907T1
+***Important
+createDateTime: 2025-09-27 21:03:16.507553
+importantText:  Needs to be fully functional before the Thanksgiving break
+importantStatus: Active
+comments: None
+assignedId: 20250927I1
 
- createDateTime: 2025-09-07 12:42:35.422361
- taskText:  Get director approval
- taskStatus: To Do
- dueDate: None
- assignedId: 20250907T2
+createDateTime: 2025-09-27 21:03:16.509649
+importantText:  All equipment must be received for configuration by Oct. 1
+importantStatus: Active
+comments: None
+assignedId: 20250927I2
 
- ***Original Input
- - End Users want to start utilizing project on Dec. 1
-     !! Needs to be fully functional before the Thanksgiving break [[20250907I1]]
- ?? Cost center for project from Finance for ordering? [[20250907Q1]]
- !! All equipment must be received for configuration by Oct. 1 [[20250907I2]]
- - Lyle is no longer on project team
- ++ Need to test configuration [[20250907T1]]
- ++ Get director approval [[20250907T2]]
+
+***Tasks
+createDateTime: 2025-09-27 21:03:16.509884
+taskText:  Need to test configuration
+taskStatus: To Do
+dueDate: None
+comments: None
+assignedId: 20250927T1
+
+createDateTime: 2025-09-27 21:03:16.510067
+taskText:  Get director approval
+taskStatus: To Do
+dueDate: None
+comments: None
+assignedId: 20250927T2
+
+***Original Input
+- End Users want to start utilizing project on Dec. 1
+    !! Needs to be fully functional before the Thanksgiving break [[20250927I1]]
+?? Cost center for project from Finance for ordering? [[20250927Q1]]
+!! All equipment must be received for configuration by Oct. 1 [[20250927I2]]
+- Lyle is no longer on project team
+++ Need to test configuration [[20250927T1]]
+++ Get director approval [[20250927T2]]
 ```
 
 4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect.

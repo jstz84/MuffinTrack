@@ -3,29 +3,32 @@ import os
 import logging
 
 class Question:
-    def __init__(self,questionText,answer=None,assignedId=None):
+    def __init__(self,questionText,answer=None,comments=None,assignedId=None):
         self.createDateTime = datetime.now()
         self.questionText = questionText
         self.questionStatus = 'Open'
         self.answer = answer
         self.idAbbrev = 'Q'
+        self.comments = comments
         self.assignedId = assignedId
-
+        
 class Task:
-    def __init__(self,taskText,dueDate=None,assignedId=None):
+    def __init__(self,taskText,dueDate=None,comments=None,assignedId=None):
         self.createDateTime = datetime.now()
         self.taskText = taskText
         self.taskStatus = 'To Do'
         self.dueDate = dueDate
         self.idAbbrev = 'T'
+        self.comments = comments
         self.assignedId = assignedId
 
 class Important:
-    def __init__(self,importantText,assignedId=None):
+    def __init__(self,importantText,comments=None,assignedId=None):
         self.createDateTime = datetime.now()
         self.importantText = importantText
         self.importantStatus = 'Active'
         self.idAbbrev = 'I'
+        self.comments = comments
         self.assignedId = assignedId
 
 def defineLogging():
@@ -119,7 +122,8 @@ def printValue(printInstanceList,instanceType,existingData):
     '''Format the objects to print'''
     for itemsToParse in printInstanceList:
         for key, value in itemsToParse.items():
-            DetailToAdd = '{}: {}{}'.format(key,value,HeaderSuffix)
+            DetailToAdd = '{}: {}{}'.format(key,value,HeaderSuffix)            
+
             if DetailToAdd.startswith('assignedId:'):
                 ListToParse.append(DetailToAdd)
                 ListToParse.append(HeaderSuffix)
@@ -169,7 +173,9 @@ def printValue(printInstanceList,instanceType,existingData):
                         taskHeaderIndex += 1
                     case 'T':
                         if HeaderPrefix not in details:
-                            readFileContent.insert(originalInputHeaderIndexToInsert - 1,details)
+                            readFileContent.insert(originalInputHeaderIndexToInsert,details)
+
+                        originalInputHeaderIndexToInsert += 1
                     case _:
                         MessageToSend = 'Instance Type {} not found (02)'.format(instanceType)
                         errorHandling('Warning',MessageToSend)
@@ -187,13 +193,12 @@ def printValue(printInstanceList,instanceType,existingData):
                 MessageToSend = 'Unable to add parsed lists due to error: {}'.format(e)
                 errorHandling('Critical',MessageToSend,ExportFilePath,unupdatedFileContent)
 
-
 def generateInstance(dynamicLineType,instanceText,questionList,importantList,taskList):
 
     match(dynamicLineType):
         case('Question'):
 
-            NewQuestion = Question(questionText=instanceText,answer=None,assignedId=None)
+            NewQuestion = Question(questionText=instanceText,answer=None,comments=None,assignedId=None)
 
             IdToReturn = generateId(NewQuestion.idAbbrev,questionList)
 
@@ -203,7 +208,7 @@ def generateInstance(dynamicLineType,instanceText,questionList,importantList,tas
 
         case('Task'):
 
-            NewTask = Task(taskText=instanceText,dueDate=None)
+            NewTask = Task(taskText=instanceText,dueDate=None,comments=None,assignedId=None)
 
             IdToReturn = generateId(NewTask.idAbbrev,taskList)
 
@@ -213,7 +218,7 @@ def generateInstance(dynamicLineType,instanceText,questionList,importantList,tas
 
         case('Important'):
 
-            NewImportant = Important(importantText=instanceText)
+            NewImportant = Important(importantText=instanceText,comments=None,assignedId=None)
 
             IdToReturn = generateId(NewImportant.idAbbrev,importantList)
 
@@ -330,11 +335,8 @@ def getContent(filePath):
             MessageToSend = 'Unable to update file with formatted output due to error: {}'.format(e)
             errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
 
-
 def main():
     global ExportFilePath
-
-    defineLogging()
 
     ExportFilePath = input('Enter file path: ')
 
@@ -350,3 +352,16 @@ def main():
             getContent(ExportFilePath)
         else:
             ExportFilePath = input('File {} does not exist. Please re-enter: '.format(ExportFilePath))
+
+if __name__=="__main__":
+    defineLogging()
+    
+    try:
+        main()
+    except Exception as e:
+        MessageToSend = 'Unhandled error: {}'.format(e)
+        errorHandling('Unhandled',MessageToSend)
+
+
+
+
