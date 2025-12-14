@@ -108,6 +108,7 @@ def printValue(printInstanceList,instanceType,existingData):
     ImportantSectionList = [HeaderSuffix + ImportantHeader]
     TaskSectionList = [HeaderSuffix + TaskHeader]
 
+
     match instanceType:
         case 'Q':
             ListToParse = QuestionSectionList
@@ -132,6 +133,7 @@ def printValue(printInstanceList,instanceType,existingData):
     
     if existingData == False:
         with open(ExportFilePath, "a+") as currentFileContent:
+            
             currentFileContent.writelines(ListToParse)
     else:
         with open(ExportFilePath, "r+") as currentFileContent:
@@ -284,7 +286,6 @@ def getContent(filePath):
             PrefixType = prefixLookup(prefixCode)
 
             if(PrefixType and '[[' not in lines):
-                fileChangeFlag = 1
                 lineWithoutPrefix = formattedLines[2:]
 
                 try:
@@ -304,33 +305,32 @@ def getContent(filePath):
                 modifiedFileList.append(linesWithId)
             else:
                 modifiedFileList.append(lines)
+
+        '''Needs to exist outside of loop to avoid duplicate printing'''
         try:
-            if len(questionInstanceList) > 0:
-                printValue(questionInstanceList,'Q',ExistingData)
+            printValue(questionInstanceList,'Q',ExistingData)
         except Exception as e:
             MessageToSend = 'Unable to parse question list due to error: {}'.format(e)
             errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
 
         try:
-            if len(importantInstanceList) > 0:
-                printValue(importantInstanceList,'I',ExistingData)
+            printValue(importantInstanceList,'I',ExistingData)
         except Exception as e:
             MessageToSend = 'Unable to parse important list due to error: {}'.format(e)
             errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
 
         try:
-            if len(taskInstanceList) > 0:
-                printValue(taskInstanceList,'T',ExistingData)
+            printValue(taskInstanceList,'T',ExistingData)
         except Exception as e:
             MessageToSend = 'Unable to parse task list due to error: {}'.format(e)
             errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
 
+
         try:
             modifiedFileList.insert(0,OriginalInput)
 
-            if fileChangeFlag == 1:
-                with open(ExportFilePath,"a+") as newExportFile:
-                        newExportFile.writelines(modifiedFileList)
+            with open(ExportFilePath,"a+") as newExportFile:
+                    newExportFile.writelines(modifiedFileList)
         except Exception as e:
             MessageToSend = 'Unable to update file with formatted output due to error: {}'.format(e)
             errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
@@ -340,8 +340,8 @@ def main():
 
     ExportFilePath = input('Enter file path: ')
 
-    '''Standardize the slash direction'''
-    ExportFilePath = ExportFilePath.replace("\\", "/")
+    '''Standardize the slash direction. Replace double quotes'''
+    ExportFilePath = ExportFilePath.replace("\\", "/").replace('"','')
 
     validFilePathEntered = 'N'
 
