@@ -20,7 +20,7 @@ Example:
 Using MuffinTrack
 ========================
 
-1. Start with a .txt file of notes
+1. Start with a .txt file of notes. Note: The MuffinTrack format is best utilized with a text-editor where matching text fields are highlighted when they are selected to easily visually scan through elements/ids
 ```
  - End Users want to start utilizing project on Dec. 1
     - Needs to be fully functional before the Thanksgiving break
@@ -97,7 +97,34 @@ assignedId: 20250927T2
 ++ Get director approval [[20250927T2]]
 ```
 
-4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect.
+4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect. Prefixed notes can also be added in "text" or "comments" fields to be parsed as a relatedId that is mapped to the original id (example below)
+
+```
+***Questions
+createDateTime: 2026-03-29 12:29:24.469269
+text:  Test Nested Question 01
+status: Open
+answer: None
+comments: None
+relatedId:  [[20260329T1]]
+assignedId: 20260329Q1
+
+
+***Important
+
+***Tasks
+createDateTime: 2026-03-29 11:11:06.229244
+text:  Test Task 01
+status: To Do
+dueDate: None
+comments: ?? Test Nested Question 01 [[20260329Q1]]
+relatedId: None
+assignedId: 20260329T1
+
+
+***Original Input
+++ Test Task 01 [[20260329T1]]
+```
 
 
 Additional Notes

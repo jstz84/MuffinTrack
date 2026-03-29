@@ -2,34 +2,25 @@ from datetime import date,datetime
 import os
 import logging
 
-class Question:
-    def __init__(self,questionText,answer=None,comments=None,assignedId=None):
+class Element:
+    elementStatusDict = {
+        'Question': 'Open',
+        'Important': 'Active',
+        'Task': 'To Do'
+    }
+       
+    def __init__(self,elementType,text,answer=None,dueDate=None,comments=None,relatedId=None,assignedId=None):
+        self.elementType = elementType
         self.createDateTime = datetime.now()
-        self.questionText = questionText
-        self.questionStatus = 'Open'
-        self.answer = answer
-        self.idAbbrev = 'Q'
-        self.comments = comments
-        self.assignedId = assignedId
-        
-class Task:
-    def __init__(self,taskText,dueDate=None,comments=None,assignedId=None):
-        self.createDateTime = datetime.now()
-        self.taskText = taskText
-        self.taskStatus = 'To Do'
+        self.text = text
+        self.status = self.elementStatusDict[self.elementType]
         self.dueDate = dueDate
-        self.idAbbrev = 'T'
+        self.answer = answer
+        self.idAbbrev = self.elementType[0:1]
         self.comments = comments
+        self.relatedId = relatedId
         self.assignedId = assignedId
 
-class Important:
-    def __init__(self,importantText,comments=None,assignedId=None):
-        self.createDateTime = datetime.now()
-        self.importantText = importantText
-        self.importantStatus = 'Active'
-        self.idAbbrev = 'I'
-        self.comments = comments
-        self.assignedId = assignedId
 
 def defineLogging():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
@@ -41,15 +32,28 @@ def errorHandling(severity,messageToLog,originalFilePath=None,originalFileConten
         logging.critical(messageToLog)
         logging.info('Parsing unable to complete. Restoring file to original state and ending program')
 
-        with open(originalFilePath,"w") as restoreFileContent:
-            restoreFileContent.writelines(originalFileContent)
+        readWriteFile(originalFilePath,'W',originalFileContent)
 
         os._exit(1) # Exit immediately with an error status
     elif severity in ['Unhandled','Warning']:
         logging.warning(messageToLog)
 
-def prefixLookup(prefixValue):
+def dictToOutput(elementType,fullDict):
+    elementAttributeDict = {
+        'Question': ['createDateTime','text','status','answer','comments','relatedId','assignedId'],
+        'Important': ['createDateTime','text','status','comments','relatedId','assignedId'],
+        'Task': ['createDateTime','text','status','dueDate','comments','relatedId','assignedId']
+    }       
 
+    formattedDict = {}
+
+    for key,value in fullDict.items():
+        if key in elementAttributeDict[elementType]:
+            formattedDict[key] = value
+
+    return formattedDict
+
+def prefixLookup(prefixValue):
     prefixDict = {'??':'Question','!!':'Important','++':'Task'}
 
     if prefixValue in prefixDict.keys():
@@ -66,302 +70,315 @@ def constructId(counterAsInt, shortDate,lineAbbrev):
 
     return constructedId
 
-def generateId(dynamicLineAbbrev,existingList):
+
+def generateId(dynamicLineAbbrev,elementList,existingFileContent):
     currentDate = date.today()
     formattedDate = str(currentDate.strftime("%Y%m%d"))
+    assignedIdList = []
 
     counter = 1
 
     generatedId = constructId(counter,formattedDate,dynamicLineAbbrev)
 
-    with open(ExportFilePath, 'r') as exportFile:
-        fileContent = exportFile.read()
+    if len(elementList) > 0:
+        for listItems in elementList:
+            for key,value in listItems.items():
+                if key == 'assignedId' and value not in assignedIdList:
+                    assignedIdList += value
 
-        while generatedId in fileContent:
+    while generatedId in ''.join(existingFileContent) or generatedId in assignedIdList:
 
-            counter = int(counter)
+        counter = int(counter)
 
-            counter += 1
+        counter += 1
 
-            generatedId = constructId(counter,formattedDate,dynamicLineAbbrev)
-
-    for existingInstances in existingList:
-        if generatedId in existingInstances.values():
-            counter = int(counter)
-
-            counter += 1
-
-            generatedId = constructId(counter,formattedDate,dynamicLineAbbrev)
-
+        generatedId = constructId(counter,formattedDate,dynamicLineAbbrev)
 
     return generatedId
 
-def printValue(printInstanceList,instanceType,existingData):
+def appendObjectId (lines, objectId):
+    linesWithId = '{} [[{}]]'.format(lines,objectId)
+
+    linesWithId = linesWithId.replace("\n [[",' [[')
+
+    return linesWithId
+
+def printValue(printInstanceList,existingData,fileExtractList):
 
     HeaderPrefix = '***'
     HeaderSuffix = '\n'
     
+    QuestionHeader= HeaderPrefix + 'Questions' + HeaderSuffix
     ImportantHeader = HeaderPrefix + 'Important' + HeaderSuffix
     TaskHeader = HeaderPrefix + 'Tasks' + HeaderSuffix
     OriginalInputHeader = HeaderPrefix + 'Original Input' + HeaderSuffix
-    QuestionSectionList = [HeaderPrefix + 'Questions' + HeaderSuffix]
-    ImportantSectionList = [HeaderSuffix + ImportantHeader]
-    TaskSectionList = [HeaderSuffix + TaskHeader]
 
+    EmptyFileTemplate = [QuestionHeader,HeaderSuffix,ImportantHeader,HeaderSuffix,TaskHeader,HeaderSuffix,OriginalInputHeader]
 
-    match instanceType:
-        case 'Q':
-            ListToParse = QuestionSectionList
-        case 'I':
-            ListToParse = ImportantSectionList
-        case 'T':
-            ListToParse = TaskSectionList
-        case _:
-            MessageToSend = 'Instance Type {} not found (01)'.format(instanceType)
-            errorHandling('Warning',MessageToSend)
+    questionList = []
+    importantList = []
+    taskList = []
 
     '''Format the objects to print'''
     for itemsToParse in printInstanceList:
-        for key, value in itemsToParse.items():
-            DetailToAdd = '{}: {}{}'.format(key,value,HeaderSuffix)            
+        elementType = itemsToParse['elementType']
+
+        formattedDict = dictToOutput(elementType,itemsToParse)
+
+        for key, value in formattedDict.items():
+            DetailToAdd = '{}: {}{}'.format(key,value,HeaderSuffix)      
 
             if DetailToAdd.startswith('assignedId:'):
-                ListToParse.append(DetailToAdd)
-                ListToParse.append(HeaderSuffix)
+                valueToAppend = DetailToAdd + HeaderSuffix
             elif DetailToAdd != '' and not DetailToAdd.startswith('idAbbrev:'):
-                ListToParse.append(DetailToAdd)
-    
+                valueToAppend = DetailToAdd
+
+            match elementType:
+                case 'Question':
+                    questionList.append(valueToAppend)
+                case 'Important':
+                    importantList.append(valueToAppend)
+                case 'Task':
+                    taskList.append(valueToAppend)
+                case _:
+                    MessageToSend = 'Instance Type {} not found (01)'.format(elementType)
+                    errorHandling('Warning',MessageToSend)
+
     if existingData == False:
-        with open(ExportFilePath, "a+") as currentFileContent:
-            
-            currentFileContent.writelines(ListToParse)
+        '''Will only be original input values'''
+        for existingLines in fileExtractList:
+            EmptyFileTemplate.append(existingLines)
+
+        formattedFileAsList = EmptyFileTemplate.copy()
     else:
-        with open(ExportFilePath, "r+") as currentFileContent:
-            readFileContent = currentFileContent.readlines()
-            unupdatedFileContent = readFileContent
+        formattedFileAsList = fileExtractList.copy()
 
-            importantHeaderIndex = readFileContent.index(ImportantHeader) - 2
-            taskHeaderIndex = readFileContent.index(TaskHeader) - 2
-            fileEndIndex = len(readFileContent) - 1
-            
-            '''On the first instance add for a file, the Original Content block will be present, but will be missing for subsequent executions'''
-            try:         
-                originalInputHeaderIndex = readFileContent.index(OriginalInputHeader)
-                originalInputHeaderIndexToInsert = originalInputHeaderIndex -1
+    '''Indexing from bottom up so that elements are always in order of oldest to newest'''
+    importantHeaderIndex = formattedFileAsList.index(ImportantHeader) - 1
+    taskHeaderIndex = formattedFileAsList.index(TaskHeader) - 1
+    originalInputHeaderIndex = formattedFileAsList.index(OriginalInputHeader) - 1
+    
+    if len(questionList) > 0:
+        for questionDetail in questionList:
+            formattedFileAsList.insert(importantHeaderIndex,questionDetail)
 
-                '''Remove old original input from text'''
-                while originalInputHeaderIndex <= fileEndIndex:
-                    readFileContent.pop(originalInputHeaderIndex)
+            importantHeaderIndex += 1
+        
+        importantHeaderIndex = formattedFileAsList.index(ImportantHeader) - 1
+        taskHeaderIndex = formattedFileAsList.index(TaskHeader) - 1
+        originalInputHeaderIndex = formattedFileAsList.index(OriginalInputHeader) - 1
 
-                    fileEndIndex = len(readFileContent) - 1
+    if len(importantList) > 0:
+        for importantDetail in importantList:
+            formattedFileAsList.insert(taskHeaderIndex, importantDetail)
 
-            except ValueError:
-                originalInputHeaderIndex = fileEndIndex
-                originalInputHeaderIndexToInsert = fileEndIndex
+            taskHeaderIndex += 1
+
+        importantHeaderIndex = formattedFileAsList.index(ImportantHeader) - 1
+        taskHeaderIndex = formattedFileAsList.index(TaskHeader) - 1
+        originalInputHeaderIndex = formattedFileAsList.index(OriginalInputHeader) - 1
+
+    if len(taskList) > 0:
+        for taskDetail in taskList:
+            formattedFileAsList.insert(originalInputHeaderIndex, taskDetail)
+
+            originalInputHeaderIndex += 1
+
+        importantHeaderIndex = formattedFileAsList.index(ImportantHeader) - 1
+        taskHeaderIndex = formattedFileAsList.index(TaskHeader) - 1
+        originalInputHeaderIndex = formattedFileAsList.index(OriginalInputHeader) - 1
+
+    return formattedFileAsList
 
 
-            '''If there are new elements to add to an existing elements section, add them to the index right before the next section starts. Increase the listed index value appropriately'''
-            for details in ListToParse: 
-                match instanceType:
-                    case 'Q':
-                        if HeaderPrefix not in details:
-                            readFileContent.insert(importantHeaderIndex,details)
+def generateInstance(dynamicLineType,instanceText,elementList,existingFileContent,foundRelatedId):
+    dynamicLineTypeAbbev = dynamicLineType[0:1]
 
-                        importantHeaderIndex += 1
-                    case 'I':
-                        if HeaderPrefix not in details:
-                            readFileContent.insert(taskHeaderIndex,details)
+    IdToReturn = generateId(dynamicLineTypeAbbev,elementList,existingFileContent)
 
-                        taskHeaderIndex += 1
-                    case 'T':
-                        if HeaderPrefix not in details:
-                            readFileContent.insert(originalInputHeaderIndexToInsert,details)
+    NewElement = Element(dynamicLineType,instanceText,answer=None,comments=None,assignedId=IdToReturn,relatedId=foundRelatedId)
+    
+    elementList.append(NewElement.__dict__)
 
-                        originalInputHeaderIndexToInsert += 1
-                    case _:
-                        MessageToSend = 'Instance Type {} not found (02)'.format(instanceType)
-                        errorHandling('Warning',MessageToSend)
-            
-            try:               
-                currentFileContent.truncate(0)
-                currentFileContent.seek(0)
-            except Exception as e:
-                MessageToSend = 'Unable to truncate text due to error: {}'.format(e)
-                errorHandling('Warning',MessageToSend)
-
-            try:
-                currentFileContent.writelines(readFileContent)
-            except Exception as e:
-                MessageToSend = 'Unable to add parsed lists due to error: {}'.format(e)
-                errorHandling('Critical',MessageToSend,ExportFilePath,unupdatedFileContent)
-
-def generateInstance(dynamicLineType,instanceText,questionList,importantList,taskList):
-
-    match(dynamicLineType):
-        case('Question'):
-
-            NewQuestion = Question(questionText=instanceText,answer=None,comments=None,assignedId=None)
-
-            IdToReturn = generateId(NewQuestion.idAbbrev,questionList)
-
-            NewQuestion.assignedId = IdToReturn
-
-            questionList.append(NewQuestion.__dict__)
-
-        case('Task'):
-
-            NewTask = Task(taskText=instanceText,dueDate=None,comments=None,assignedId=None)
-
-            IdToReturn = generateId(NewTask.idAbbrev,taskList)
-
-            NewTask.assignedId = IdToReturn
-
-            taskList.append(NewTask.__dict__)
-
-        case('Important'):
-
-            NewImportant = Important(importantText=instanceText,comments=None,assignedId=None)
-
-            IdToReturn = generateId(NewImportant.idAbbrev,importantList)
-
-            NewImportant.assignedId = IdToReturn
-
-            importantList.append(NewImportant.__dict__)
-
-        case _:
-            print('Dynamic Line Type {} not found'.format(dynamicLineType))
-
-            IdToReturn = None
-
-    returnList = [IdToReturn,questionList,importantList,taskList]
+    returnList = [IdToReturn,elementList]
 
     return returnList
 
-def getContent(filePath):
+def findPrefix(lineToSearch):
+    formattedLines = lineToSearch.strip()
+    prefixCode = formattedLines[0:2]
+    nestedElement = 0
+
+    PrefixType = prefixLookup(prefixCode)
+
+    if PrefixType == None:
+        allowedNestedElementName = ['text:','comments:']
+
+        for attribute in allowedNestedElementName:
+            if lineToSearch.startswith(attribute):
+                formattedLines = lineToSearch.replace(attribute,'').strip()
+                
+                prefixCode = formattedLines[0:2]
+
+                PrefixType = prefixLookup(prefixCode)
+
+                if PrefixType != None:
+                    nestedElement = 1
+    
+    lineWithoutPrefix = formattedLines[2:]
+
+    return [lineWithoutPrefix,PrefixType,nestedElement]
+
+def parseLines(fileContents, originalInputPosition):
+    elementInstanceList = []
+    
+    fileChangeFlag = 0
+
+    for lines in fileContents:
+        prefixHandled = findPrefix(lines)
+        PrefixType = prefixHandled[1]
+        nestedElementFlag = prefixHandled[2]
+
+        if(PrefixType and '[[' not in lines):
+            fileChangeFlag = 1
+
+            lineWithoutPrefix = prefixHandled[0]
+
+            lineIndexToUpdate = fileContents.index(lines)
+
+            foundRelatedId = None
+            
+            if nestedElementFlag == 1:
+                for i in range(4):
+                    nextValue = fileContents[lineIndexToUpdate + i]
+                    if nextValue.startswith('assignedId:'):
+                        nextValue = nextValue.replace('assignedId: ','').replace('\n','')
+
+                        foundRelatedId = appendObjectId('',nextValue)
+
+            
+            returnedValues = generateInstance(PrefixType,lineWithoutPrefix,elementInstanceList,fileContents,foundRelatedId)
+
+            ObjectId = returnedValues[0]
+            elementInstanceList = returnedValues[1]
+
+            linesWithId = appendObjectId(lines,ObjectId) +'\n'
+
+            '''Nested object id addition handled with instance generation'''
+            if lineIndexToUpdate >= originalInputPosition or nestedElementFlag == 1:
+                fileContents[lineIndexToUpdate] = linesWithId
+
+    return [fileContents,fileChangeFlag,elementInstanceList]
+
+
+def getExistingData(fileDetails):
     OriginalInput = '***Original Input\n'
 
-    with open(filePath, "r+") as fileContent:
-        fileDetails = fileContent.readlines()
-        modifiedFileList = []
-        listToParse = []
-        fileChangeFlag = 0
-        '''Used to restore the file back to its original state in the event of failure'''
-        unchangedFileDetails = fileDetails
+    if OriginalInput in fileDetails:
+        '''If file has been processed before, find and save the existing original input header index'''
+        ExistingData = True
 
-        questionInstanceList = []
-        importantInstanceList = []
-        taskInstanceList = []
+        OriginalInputIndex = fileDetails.index(OriginalInput) + 1
+    else:
+        ExistingData = False
 
-        if OriginalInput in fileDetails:
-            '''If file has been processed before, find and save the existing original input section'''
-            ExistingData = True
+        OriginalInputIndex = 0
 
-            ExtractedOriginalInput = []
+    return [OriginalInputIndex,ExistingData]
 
-            OriginalInputIndex = fileDetails.index(OriginalInput)+1
+def getFilePath(passedFilePath):
+    if passedFilePath != None:
+        FilePathInput = passedFilePath
+    else:
+        FilePathInput = input('Enter file path: ')
 
-            EndIndex = len(fileDetails)
+        '''Standardize the slash direction. Replace double quotes'''
+        FilePathInput = FilePathInput.replace("\\", "/").replace('"','')
 
-            counter = OriginalInputIndex
+        validFilePathEntered = 'N'
 
-            while counter < EndIndex:
-                ExtractedOriginalInput.append(fileDetails[counter])
-
-                counter += 1
-
-            listToParse = ExtractedOriginalInput
-        else:
-            '''If the file has never been processed before, empty file so it can be overwritten with formatted data'''
-            ExistingData = False
-            fileContent.truncate(0)
-            fileContent.seek(0)
-
-            listToParse = fileDetails
-
-        for lines in listToParse:
-
-            formattedLines = lines.strip()
-            prefixCode = formattedLines[0:2]
-
-            PrefixType = prefixLookup(prefixCode)
-
-            if(PrefixType and '[[' not in lines):
-                lineWithoutPrefix = formattedLines[2:]
-
-                try:
-                    returnedValues = generateInstance(PrefixType,lineWithoutPrefix,questionInstanceList,importantInstanceList,taskInstanceList)
-                except Exception as e:
-                    MessageToSend = 'Unable to generate instance due to error: {}'.format(e)
-                    errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
-
-                ObjectId = returnedValues[0]
-                questionInstanceList = returnedValues[1]
-                importantInstanceList = returnedValues[2]
-                taskInstanceList = returnedValues[3]
-                linesWithId = '{} [[{}]]\n'.format(lines,ObjectId)
-
-                linesWithId = linesWithId.replace("\n [[",' [[')
-
-                modifiedFileList.append(linesWithId)
+        while validFilePathEntered == 'N':
+            if os.path.exists(FilePathInput):
+                validFilePathEntered = "Y"
             else:
-                modifiedFileList.append(lines)
+                FilePathInput = input('File {} does not exist. Please re-enter: '.format(FilePathInput))        
 
-        '''Needs to exist outside of loop to avoid duplicate printing'''
+    return FilePathInput
+
+def readWriteFile(filePath,actionNeeded,fileWithChanges=None):
+    if actionNeeded == 'R':
+        with open(filePath, "r+") as fileContent:
+            '''Unmodified to restore the file back to its original state in the event of failure'''
+            fileDetails = fileContent.readlines()
+        
+        return fileDetails
+    elif actionNeeded == 'W':
+        with open(filePath,"w") as newFileVersion:
+            newFileVersion.writelines(fileWithChanges)
+
+        return None
+
+
+def main(optionalFilePath=None):
+    defineLogging()
+
+    '''Get file path from input'''
+    try:
+        filePath = getFilePath(optionalFilePath)
+    except Exception as e:
+        MessageToSend = 'Unable to get file path. Exiting: {}'.format(e)
+        errorHandling('Warning',MessageToSend)
+        os._exit(1) # Exit immediately with an error status
+
+    '''Read file'''
+    try:
+        fileContents = readWriteFile(filePath,'R')
+    except Exception as e:
+        MessageToSend = 'Unable to read file at path. Exiting: {}'.format(e)
+        errorHandling('Warning',MessageToSend)
+        os._exit(1) # Exit immediately with an error status
+
+    '''Find if file has been processed before'''
+    try:
+        flagData = getExistingData(fileContents)
+    except Exception as e:
+        MessageToSend = 'Unable to identify existing data: {}'.format(e)
+        errorHandling('Critical',MessageToSend,filePath,fileContents)
+
+    originalInputIndex = flagData[0]
+    existingData = flagData[1]
+
+    '''Parse lines in file for changes'''
+    try:
+        parsedValues = parseLines(fileContents, originalInputIndex)
+    except Exception as e:
+        MessageToSend = 'Unable to parse text lines: {}'.format(e)
+        errorHandling('Critical',MessageToSend,filePath,fileContents)
+    
+    fileDetails = parsedValues[0]
+    fileChangeFlag = parsedValues[1]
+    elementInstanceList = parsedValues[2]
+    
+    if fileChangeFlag == 1:
+
+        '''Format new elements to print'''
         try:
-            printValue(questionInstanceList,'Q',ExistingData)
+            fullFileListToPrint = printValue(elementInstanceList,existingData,fileDetails)
         except Exception as e:
-            MessageToSend = 'Unable to parse question list due to error: {}'.format(e)
-            errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
+            MessageToSend = 'Unable to organize formatted objects: {}'.format(filePath,e)
+            errorHandling('Critical',MessageToSend,filePath,fileContents)   
 
+        '''Write back to file'''
         try:
-            printValue(importantInstanceList,'I',ExistingData)
+            readWriteFile(filePath,'W',fullFileListToPrint)
         except Exception as e:
-            MessageToSend = 'Unable to parse important list due to error: {}'.format(e)
-            errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
+            MessageToSend = 'Unable to update file at {}: {}'.format(filePath,e)
+            errorHandling('Critical',MessageToSend,filePath,fileContents)
 
-        try:
-            printValue(taskInstanceList,'T',ExistingData)
-        except Exception as e:
-            MessageToSend = 'Unable to parse task list due to error: {}'.format(e)
-            errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
-
-
-        try:
-            modifiedFileList.insert(0,OriginalInput)
-
-            with open(ExportFilePath,"a+") as newExportFile:
-                    newExportFile.writelines(modifiedFileList)
-        except Exception as e:
-            MessageToSend = 'Unable to update file with formatted output due to error: {}'.format(e)
-            errorHandling('Critical',MessageToSend,filePath,unchangedFileDetails)
-
-def main():
-    global ExportFilePath
-
-    ExportFilePath = input('Enter file path: ')
-
-    '''Standardize the slash direction. Replace double quotes'''
-    ExportFilePath = ExportFilePath.replace("\\", "/").replace('"','')
-
-    validFilePathEntered = 'N'
-
-    while validFilePathEntered == 'N':
-        if os.path.exists(ExportFilePath):
-            validFilePathEntered = "Y"
-
-            getContent(ExportFilePath)
-        else:
-            ExportFilePath = input('File {} does not exist. Please re-enter: '.format(ExportFilePath))
 
 if __name__=="__main__":
-    defineLogging()
-    
     try:
         main()
     except Exception as e:
         MessageToSend = 'Unhandled error: {}'.format(e)
         errorHandling('Unhandled',MessageToSend)
-
-
-
-
