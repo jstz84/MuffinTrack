@@ -191,12 +191,12 @@ def printValue(printInstanceList,existingData,fileExtractList):
     return formattedFileAsList
 
 
-def generateInstance(dynamicLineType,instanceText,elementList,existingFileContent,foundRelatedId):
+def generateInstance(dynamicLineType,instanceText,elementList,existingFileContent,foundRelatedId,commentAssociated):
     dynamicLineTypeAbbev = dynamicLineType[0:1]
 
     IdToReturn = generateId(dynamicLineTypeAbbev,elementList,existingFileContent)
 
-    NewElement = Element(dynamicLineType,instanceText,answer=None,comments=None,assignedId=IdToReturn,relatedId=foundRelatedId)
+    NewElement = Element(dynamicLineType,instanceText,answer=None,comments=commentAssociated,assignedId=IdToReturn,relatedId=foundRelatedId)
     
     elementList.append(NewElement.__dict__)
 
@@ -229,6 +229,36 @@ def findPrefix(lineToSearch):
 
     return [lineWithoutPrefix,PrefixType,nestedElement]
 
+def findRelatedId(contentsToSearch, lineIndexToUpdate):
+
+    foundRelatedId = None
+
+    #TODO: Make the range number dynamic, maybe only send that instance?
+    for i in range(4):
+        nextValue = contentsToSearch[lineIndexToUpdate + i]
+        if nextValue.startswith('assignedId:'):
+            nextValue = nextValue.replace('assignedId: ','').replace('\n','')
+
+            foundRelatedId = appendObjectId('',nextValue)
+
+    return foundRelatedId
+
+def findComments(line):
+
+    commentIdentifier = '--'
+
+    preIdentifier = None
+    postIdentifier = None
+
+    if commentIdentifier in line:
+        identifierIndex = line.index(commentIdentifier)
+
+        preIdentifier = line[0:identifierIndex]
+        postIdentifier = line[identifierIndex:len(line)].replace(commentIdentifier,'')
+
+    return [preIdentifier,postIdentifier]
+
+
 def parseLines(fileContents, originalInputPosition):
     elementInstanceList = []
     
@@ -238,6 +268,7 @@ def parseLines(fileContents, originalInputPosition):
         prefixHandled = findPrefix(lines)
         PrefixType = prefixHandled[1]
         nestedElementFlag = prefixHandled[2]
+        foundRelatedId = None
 
         if(PrefixType and '[[' not in lines):
             fileChangeFlag = 1
@@ -246,25 +277,24 @@ def parseLines(fileContents, originalInputPosition):
 
             lineIndexToUpdate = fileContents.index(lines)
 
-            foundRelatedId = None
-            
             if nestedElementFlag == 1:
-                for i in range(4):
-                    nextValue = fileContents[lineIndexToUpdate + i]
-                    if nextValue.startswith('assignedId:'):
-                        nextValue = nextValue.replace('assignedId: ','').replace('\n','')
+                foundRelatedId = findRelatedId(fileContents,lineIndexToUpdate)
 
-                        foundRelatedId = appendObjectId('',nextValue)
+            foundComments = findComments(lineWithoutPrefix)
+            lineWithoutComments = foundComments[0]
+            commentLine = foundComments[1]
 
+            if lineWithoutComments != None:
+                lineWithoutPrefix = lineWithoutComments
             
-            returnedValues = generateInstance(PrefixType,lineWithoutPrefix,elementInstanceList,fileContents,foundRelatedId)
+            returnedValues = generateInstance(PrefixType,lineWithoutPrefix,elementInstanceList,fileContents,foundRelatedId,commentLine)
 
             ObjectId = returnedValues[0]
             elementInstanceList = returnedValues[1]
 
             linesWithId = appendObjectId(lines,ObjectId) +'\n'
 
-            '''Nested object id addition handled with instance generation'''
+            '''Object id addition handled if changes to line or prefix found in specific attribute lines'''
             if lineIndexToUpdate >= originalInputPosition or nestedElementFlag == 1:
                 fileContents[lineIndexToUpdate] = linesWithId
 
@@ -333,6 +363,7 @@ def main(optionalFilePath=None):
     '''Read file'''
     try:
         fileContents = readWriteFile(filePath,'R')
+        unchangedFileContents = fileContents.copy()
     except Exception as e:
         MessageToSend = 'Unable to read file at path. Exiting: {}'.format(e)
         errorHandling('Warning',MessageToSend)
@@ -343,7 +374,7 @@ def main(optionalFilePath=None):
         flagData = getExistingData(fileContents)
     except Exception as e:
         MessageToSend = 'Unable to identify existing data: {}'.format(e)
-        errorHandling('Critical',MessageToSend,filePath,fileContents)
+        errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)
 
     originalInputIndex = flagData[0]
     existingData = flagData[1]
@@ -353,7 +384,7 @@ def main(optionalFilePath=None):
         parsedValues = parseLines(fileContents, originalInputIndex)
     except Exception as e:
         MessageToSend = 'Unable to parse text lines: {}'.format(e)
-        errorHandling('Critical',MessageToSend,filePath,fileContents)
+        errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)
     
     fileDetails = parsedValues[0]
     fileChangeFlag = parsedValues[1]
@@ -366,14 +397,14 @@ def main(optionalFilePath=None):
             fullFileListToPrint = printValue(elementInstanceList,existingData,fileDetails)
         except Exception as e:
             MessageToSend = 'Unable to organize formatted objects: {}'.format(filePath,e)
-            errorHandling('Critical',MessageToSend,filePath,fileContents)   
+            errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)   
 
         '''Write back to file'''
         try:
             readWriteFile(filePath,'W',fullFileListToPrint)
         except Exception as e:
             MessageToSend = 'Unable to update file at {}: {}'.format(filePath,e)
-            errorHandling('Critical',MessageToSend,filePath,fileContents)
+            errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)
 
 
 if __name__=="__main__":
@@ -382,3 +413,4 @@ if __name__=="__main__":
     except Exception as e:
         MessageToSend = 'Unhandled error: {}'.format(e)
         errorHandling('Unhandled',MessageToSend)
+

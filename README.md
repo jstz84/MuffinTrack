@@ -20,7 +20,7 @@ Example:
 Using MuffinTrack
 ========================
 
-1. Start with a .txt file of notes. Note: The MuffinTrack format is best utilized with a text-editor where matching text fields are highlighted when they are selected to easily visually scan through elements/ids
+1. Start with a .txt file of notes. Note: The MuffinTrack format is best utilized with a text-editor where matching text fields are highlighted when they are selected to easily visually scan through elements/ids 
 ```
  - End Users want to start utilizing project on Dec. 1
     - Needs to be fully functional before the Thanksgiving break
@@ -32,15 +32,17 @@ Using MuffinTrack
 ```
 
 
-2. Add prefixes to lines that need to be parsed. 
+2. Add formatting to lines that need to be parsed. 
 For lines that should become "Question" objects, prefix the line with "??". 
 Important notes should have the prefix "!!". 
 Task notes should have the prefix "++".
+Within a line that has a prefix listed above if "--" is found, the rest of the line will be considered a comment on the generated element
+
 ```
  - End Users want to start utilizing project on Dec. 1
     !! Needs to be fully functional before the Thanksgiving break
  ?? Cost center for project from Finance for ordering?
- !! All equipment must be received for configuration by Oct. 1
+ !! All equipment must be received for configuration by Oct. 1 -- Per Director, call purchasing if it's not received by 9/25
  - Lyle is no longer on project team
  ++ Need to test configuration
  ++ Get director approval
@@ -50,54 +52,61 @@ Task notes should have the prefix "++".
 3. Run MuffinTrack as a CLI (`python3 -m MuffinTrack`). It will ask for the file path to the .txt file. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
 ```
 ***Questions
-createDateTime: 2025-09-27 21:03:16.509181
-questionText:  Cost center for project from Finance for ordering?
-questionStatus: Open
+createDateTime: 2026-04-03 20:21:25.424320
+text:  Cost center for project from Finance for ordering?
+status: Open
 answer: None
 comments: None
-assignedId: 20250927Q1
+relatedId: None
+assignedId: 20260403Q1
 
 
 ***Important
-createDateTime: 2025-09-27 21:03:16.507553
-importantText:  Needs to be fully functional before the Thanksgiving break
-importantStatus: Active
+createDateTime: 2026-04-03 20:21:25.424172
+text:  Needs to be fully functional before the Thanksgiving break
+status: Active
 comments: None
-assignedId: 20250927I1
+relatedId: None
+assignedId: 20260403I1
 
-createDateTime: 2025-09-27 21:03:16.509649
-importantText:  All equipment must be received for configuration by Oct. 1
-importantStatus: Active
-comments: None
-assignedId: 20250927I2
+createDateTime: 2026-04-03 20:21:25.424416
+text:  All equipment must be received for configuration by Oct. 1 
+status: Active
+comments:  Per Director, call purchasing if it's not received by 9/25
+relatedId: None
+assignedId: 20260403I2
 
 
 ***Tasks
-createDateTime: 2025-09-27 21:03:16.509884
-taskText:  Need to test configuration
-taskStatus: To Do
+createDateTime: 2026-04-03 20:21:25.424485
+text:  Need to test configuration
+status: To Do
 dueDate: None
 comments: None
-assignedId: 20250927T1
+relatedId: None
+assignedId: 20260403T1
 
-createDateTime: 2025-09-27 21:03:16.510067
-taskText:  Get director approval
-taskStatus: To Do
+createDateTime: 2026-04-03 20:21:25.424548
+text:  Get director approval
+status: To Do
 dueDate: None
 comments: None
-assignedId: 20250927T2
+relatedId: None
+assignedId: 20260403T2
+
 
 ***Original Input
-- End Users want to start utilizing project on Dec. 1
-    !! Needs to be fully functional before the Thanksgiving break [[20250927I1]]
-?? Cost center for project from Finance for ordering? [[20250927Q1]]
-!! All equipment must be received for configuration by Oct. 1 [[20250927I2]]
-- Lyle is no longer on project team
-++ Need to test configuration [[20250927T1]]
-++ Get director approval [[20250927T2]]
+ - End Users want to start utilizing project on Dec. 1
+    !! Needs to be fully functional before the Thanksgiving break [[20260403I1]]
+ ?? Cost center for project from Finance for ordering? [[20260403Q1]]
+ !! All equipment must be received for configuration by Oct. 1 -- Per Director, call purchasing if it's not received by 9/25 [[20260403I2]]
+ - Lyle is no longer on project team
+ ++ Need to test configuration [[20260403T1]]
+ ++ Get director approval [[20260403T2]]
+
 ```
 
-4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect. Prefixed notes can also be added in "text" or "comments" fields to be parsed as a relatedId that is mapped to the original id (example below)
+4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect. The prefixes above can also be added in "text" or "comments" element fields to be parsed as a new element with a relatedId that is mapped to the original id (example below).
 
 ```
 ***Questions
@@ -129,8 +138,9 @@ assignedId: 20260329T1
 
 Additional Notes
 ===================
-* No AI is used for this parser so content of the elements are not modified during processing
+* Content of the elements are not modified during processing
 * If there is a parse failure, an error will be returned and the version of the file read in at runtime will be restored to the filepath
+* If an unsaved file is processed, the unsaved changes will be lost
 
 
 
