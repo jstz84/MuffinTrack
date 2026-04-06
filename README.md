@@ -25,18 +25,22 @@ Using MuffinTrack
  - End Users want to start utilizing project on Dec. 1
     - Needs to be fully functional before the Thanksgiving break
  - Cost center for project from Finance for ordering?
- - All equipment must be received for configuration by Oct. 1
+ - All equipment must be received for configuration by Oct. 1 -- Per Director, call purchasing if it's not received by 9/25
  - Lyle is no longer on project team
- - Need to test configuration
+ - Need to test configuration <<Includes:
+ 	1. Receiving new image file
+ 	2. Testing with new machines
+ 	3. Testing installs of all software >>
  - Get director approval
 ```
 
 
 2. Add formatting to lines that need to be parsed. 
-For lines that should become "Question" objects, prefix the line with "??". 
-Important notes should have the prefix "!!". 
-Task notes should have the prefix "++".
-Within a line that has a prefix listed above if "--" is found, the rest of the line will be considered a comment on the generated element
+   + For lines that should become "Question" objects, prefix the line with "??". 
+   + Important notes should have the prefix "!!". 
+   + Task notes should have the prefix "++".
+   + Within a line that has a prefix listed above if "--" is found, the rest of the line will be considered a comment on the generated element
+   + Multiline text should be enclosed in << and >>.
 
 ```
  - End Users want to start utilizing project on Dec. 1
@@ -44,69 +48,86 @@ Within a line that has a prefix listed above if "--" is found, the rest of the l
  ?? Cost center for project from Finance for ordering?
  !! All equipment must be received for configuration by Oct. 1 -- Per Director, call purchasing if it's not received by 9/25
  - Lyle is no longer on project team
- ++ Need to test configuration
+ ++ Need to test configuration <<Includes:
+ 	1. Receiving new image file
+ 	2. Testing with new machines
+ 	3. Testing installs of all software >>
  ++ Get director approval
 ```
 
 
-3. Run MuffinTrack as a CLI (`python3 -m MuffinTrack`). It will ask for the file path to the .txt file. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
+3. Run MuffinTrack as a CLI (`python3 -m MuffinTrack`). It will ask for the file path to the .txt file, if not specified with the call. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
 ```
 ***Questions
-createDateTime: 2026-04-03 20:21:25.424320
-text:  Cost center for project from Finance for ordering?
+createDateTime: 2026-04-05 22:05:32.397309
+text: Cost center for project from Finance for ordering?
 status: Open
 answer: None
 comments: None
 relatedId: None
-assignedId: 20260403Q1
+assignedId: 20260405Q1
 
 
 ***Important
-createDateTime: 2026-04-03 20:21:25.424172
-text:  Needs to be fully functional before the Thanksgiving break
+createDateTime: 2026-04-05 22:05:32.397257
+text: Needs to be fully functional before the Thanksgiving break
 status: Active
-comments: None
+comments: ++ Get list of department heads to approve they are "fully functional" [[20260405T3]]
 relatedId: None
-assignedId: 20260403I1
+assignedId: 20260405I1
 
-createDateTime: 2026-04-03 20:21:25.424416
-text:  All equipment must be received for configuration by Oct. 1 
+createDateTime: 2026-04-05 22:05:32.397355
+text: All equipment must be received for configuration by Oct. 1 
 status: Active
 comments:  Per Director, call purchasing if it's not received by 9/25
 relatedId: None
-assignedId: 20260403I2
+assignedId: 20260405I2
 
 
 ***Tasks
-createDateTime: 2026-04-03 20:21:25.424485
-text:  Need to test configuration
+createDateTime: 2026-04-05 22:05:32.397403
+text: Need to test configuration Includes:
+ 	1. Receiving new image file
+ 	2. Testing with new machines
+ 	3. Testing installs of all software
 status: To Do
 dueDate: None
 comments: None
 relatedId: None
-assignedId: 20260403T1
+assignedId: 20260405T1
 
-createDateTime: 2026-04-03 20:21:25.424548
-text:  Get director approval
+createDateTime: 2026-04-05 22:05:32.397449
+text: Get director approval
 status: To Do
 dueDate: None
 comments: None
 relatedId: None
-assignedId: 20260403T2
+assignedId: 20260405T2
+
+createDateTime: 2026-04-05 22:07:51.948277
+text: Get list of department heads to approve they are "fully functional"
+status: To Do
+dueDate: None
+comments: None
+relatedId:  [[20260405I1]]
+assignedId: 20260405T3
 
 
 ***Original Input
  - End Users want to start utilizing project on Dec. 1
-    !! Needs to be fully functional before the Thanksgiving break [[20260403I1]]
- ?? Cost center for project from Finance for ordering? [[20260403Q1]]
- !! All equipment must be received for configuration by Oct. 1 -- Per Director, call purchasing if it's not received by 9/25 [[20260403I2]]
+    !! Needs to be fully functional before the Thanksgiving break [[20260405I1]]
+ ?? Cost center for project from Finance for ordering? [[20260405Q1]]
+ !! All equipment must be received for configuration by Oct. 1 -- Per Director, call purchasing if it's not received by 9/25 [[20260405I2]]
  - Lyle is no longer on project team
- ++ Need to test configuration [[20260403T1]]
- ++ Get director approval [[20260403T2]]
+ ++ Need to test configuration <<Includes:
+ 	1. Receiving new image file
+ 	2. Testing with new machines
+ 	3. Testing installs of all software >> [[20260405T1]]
+ ++ Get director approval [[20260405T2]]
 
 ```
 
-4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect. The prefixes above can also be added in "text" or "comments" element fields to be parsed as a new element with a relatedId that is mapped to the original id (example below).
+4. Objects can be modified in any way and modifications will persist through repeated parsings. Subsequent notes can be added anywhere below the "***Original Input" header and the file can be reparsed to the same effect. The prefixes above can also be added in "text" or "comments" element fields (either immediately after the attribute name or as a new line) to be parsed as a new element with a relatedId that is mapped to the original id (example below).
 
 ```
 ***Questions

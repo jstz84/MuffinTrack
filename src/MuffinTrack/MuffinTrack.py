@@ -23,20 +23,22 @@ class Element:
 
 
 def defineLogging():
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
     return None
 
-def errorHandling(severity,messageToLog,originalFilePath=None,originalFileContent=None):
-    if severity == 'Critical':
-        logging.critical(messageToLog)
+def messageHandling(severity,messageToLog,originalFilePath=None,originalFileContent=None):
+    if severity in ['Critical','Unhandled']:
+        logging.exception(messageToLog)
         logging.info('Parsing unable to complete. Restoring file to original state and ending program')
 
         readWriteFile(originalFilePath,'W',originalFileContent)
 
         os._exit(1) # Exit immediately with an error status
-    elif severity in ['Unhandled','Warning']:
-        logging.warning(messageToLog)
+    elif severity in ['Warning']:
+        logging.exception(messageToLog)
+    elif severity in ['Info']:
+        logging.info(messageToLog)
 
 def dictToOutput(elementType,fullDict):
     elementAttributeDict = {
@@ -62,6 +64,16 @@ def prefixLookup(prefixValue):
         PrefixName = None
 
     return PrefixName
+
+def tagLookup(tagName):
+    tagDict = {'assignedId':'[[', 'multiLineStart':'<<','comment':'--'}
+
+    if tagName in tagDict.keys():
+        tagValue = tagDict[tagName]
+    else:
+        tagValue = None
+
+    return tagValue
 
 def constructId(counterAsInt, shortDate,lineAbbrev):
     counterAsString = str(counterAsInt)
@@ -142,7 +154,7 @@ def printValue(printInstanceList,existingData,fileExtractList):
                     taskList.append(valueToAppend)
                 case _:
                     MessageToSend = 'Instance Type {} not found (01)'.format(elementType)
-                    errorHandling('Warning',MessageToSend)
+                    messageHandling('Warning',MessageToSend)
 
     if existingData == False:
         '''Will only be original input values'''
@@ -205,100 +217,214 @@ def generateInstance(dynamicLineType,instanceText,elementList,existingFileConten
     return returnList
 
 def findPrefix(lineToSearch):
-    formattedLines = lineToSearch.strip()
+    formattedLines = lineToSearch
     prefixCode = formattedLines[0:2]
-    nestedElement = 0
 
     PrefixType = prefixLookup(prefixCode)
 
     if PrefixType == None:
-        allowedNestedElementName = ['text:','comments:']
+        '''Expecation is that nested elements exist on a new line. If they are in text or comments, the prefix should be immediately after the attribute name'''
+        allowedNestedElementName = ['text','comments']
 
         for attribute in allowedNestedElementName:
             if lineToSearch.startswith(attribute):
-                formattedLines = lineToSearch.replace(attribute,'').strip()
+                formattedLines = lineToSearch.replace(('{}: '.format(attribute)),'')
                 
                 prefixCode = formattedLines[0:2]
-
+                
                 PrefixType = prefixLookup(prefixCode)
-
-                if PrefixType != None:
-                    nestedElement = 1
     
     lineWithoutPrefix = formattedLines[2:]
 
-    return [lineWithoutPrefix,PrefixType,nestedElement]
+    return [lineWithoutPrefix,PrefixType]
+
+def findNextInstanceOf(stringToFind,lineStartIndex,fileContents,indexLineReturnMode):
+        nextInstanceFound = 0
+
+        returnedValue = None
+
+        while nextInstanceFound == 0 and lineStartIndex < len(fileContents):
+            if stringToFind in fileContents[lineStartIndex]:
+
+                match indexLineReturnMode:
+                    case 'lineValue':
+                        returnedValue = fileContents[lineStartIndex]
+                    case 'lineIndex':
+                        returnedValue = lineStartIndex
+
+                nextInstanceFound = 1
+            else:
+                lineStartIndex += 1 
+
+        if nextInstanceFound == 0 and stringToFind != '<<':
+             messageToLog = ('Next instance of string "{}" Not Found!'.format(stringToFind))
+
+             messageHandling('Warning',messageToLog)
+
+        return returnedValue
 
 def findRelatedId(contentsToSearch, lineIndexToUpdate):
 
     foundRelatedId = None
 
-    #TODO: Make the range number dynamic, maybe only send that instance?
-    for i in range(4):
-        nextValue = contentsToSearch[lineIndexToUpdate + i]
-        if nextValue.startswith('assignedId:'):
-            nextValue = nextValue.replace('assignedId: ','').replace('\n','')
+    NextAssignedIdInstance = findNextInstanceOf('assignedId:',lineIndexToUpdate,contentsToSearch,'lineValue')
+    NextAssignedIdInstance = NextAssignedIdInstance.replace('assignedId: ','').replace('\n','')
 
-            foundRelatedId = appendObjectId('',nextValue)
+    foundRelatedId = appendObjectId('',NextAssignedIdInstance)
 
     return foundRelatedId
 
+def combineMultiLines(startIndex,lineWithoutPrefix,fileContents):
+    multiLineEndIndex = findNextInstanceOf(">>",startIndex,fileContents,'lineIndex')
+
+    '''Starting on the line after the current one, see if another start tag is listed before the end tag found'''
+    multiLineNextStartIndex = findNextInstanceOf('<<',startIndex + 1,fileContents,'lineIndex')
+
+    if multiLineNextStartIndex and multiLineNextStartIndex < multiLineEndIndex and multiLineNextStartIndex > startIndex:
+        messageToLog = 'Multiline parsing opened, but never closed. Line Text: {}'.format(lineWithoutPrefix)
+
+        messageHandling('Info',messageToLog)
+
+        multiLineWithoutPrefix = lineWithoutPrefix
+        multiLineEndIndex = startIndex
+    elif multiLineNextStartIndex == None or multiLineNextStartIndex > multiLineEndIndex:
+        '''Get all the applicable lines in their current format'''
+        '''List slicing: start is always inclusive, end is always exclusive. Overlap doesn't matter'''
+        multiLineAsList = fileContents[startIndex:multiLineEndIndex + 1]
+        multiLineAsListLength = len(multiLineAsList) - 1
+
+        multiLineAsList[0] = lineWithoutPrefix
+        multiLineAsList[multiLineAsListLength] = multiLineAsList[multiLineAsListLength].replace('>>','')
+
+        '''Don't insist on formatting. Multiline should maintain what's in place'''
+        multiLineWithoutPrefix = ''.join(multiLineAsList)
+
+    multiLineWithoutPrefix = multiLineWithoutPrefix.replace('<<','')
+
+    return [multiLineWithoutPrefix,multiLineEndIndex]
+
 def findComments(line):
 
-    commentIdentifier = '--'
+    commentIdentifier = tagLookup('comment')
+    newLineIdentifier = '\n'
 
-    preIdentifier = None
-    postIdentifier = None
+    identifierIndex = line.index(commentIdentifier)
 
-    if commentIdentifier in line:
-        identifierIndex = line.index(commentIdentifier)
+    preIdentifier = line[0:identifierIndex]
 
-        preIdentifier = line[0:identifierIndex]
+    if newLineIdentifier in line:
+        nextNewLineIndex = line.index(newLineIdentifier,identifierIndex)
+        postIdentifier = line[identifierIndex:nextNewLineIndex].replace(commentIdentifier,'')
+
+        preIdentifier = preIdentifier + line[nextNewLineIndex:len(line)]
+    else:
         postIdentifier = line[identifierIndex:len(line)].replace(commentIdentifier,'')
 
     return [preIdentifier,postIdentifier]
 
+def getLineInfo(line, fileContent,fileInfo):
+        assignedIdReferenceWrapper = tagLookup('assignedId')
+        multiLineWrapper = tagLookup('multiLineStart')
+        commentIdentifier = tagLookup('comment')
 
-def parseLines(fileContents, originalInputPosition):
-    elementInstanceList = []
+        strippedLine = line.strip(' ')
+
+        prefixHandled = findPrefix(strippedLine)
+
+        lineInfoDict = {'prefixType':prefixHandled[1],
+                        'lineIndex': fileContent.index(line),
+                        'processElement':0,
+                        'multiLine':0,
+                        'nestedElement':0,
+                        'foundComments':0,
+                        'multiLineEndingIndex':None,
+                        'lineWithoutPrefix':None,
+                        'originalLine':line}
+        
+        if(lineInfoDict['prefixType'] and assignedIdReferenceWrapper not in line):
+            '''Format lines'''
+
+            fileInfo['fileChangeFlag'] = 1
+            lineInfoDict['lineWithoutPrefix'] = prefixHandled[0]
+            lineInfoDict['processElement'] = 1
+
+            if multiLineWrapper in line:
+                lineInfoDict['multiLine'] = 1
+
+                multiLineResults = combineMultiLines(lineInfoDict['lineIndex'],lineInfoDict['lineWithoutPrefix'],fileContent)
+                multiLineReturnedLine = multiLineResults[0]
+
+                lineInfoDict['multiLineEndingIndex'] = multiLineResults[1]
+
+                if assignedIdReferenceWrapper not in multiLineReturnedLine:
+                    lineInfoDict['lineWithoutPrefix'] = multiLineReturnedLine
+                else:
+                    lineInfoDict['processElement'] = 0
+
+            if lineInfoDict['lineIndex'] < fileInfo['originalInputIndex']:
+                lineInfoDict['nestedElement'] = 1
+
+            if commentIdentifier in lineInfoDict['lineWithoutPrefix']:
+                lineInfoDict['foundComments'] = 1
+
+            lineInfoDict['lineWithoutPrefix'] = lineInfoDict['lineWithoutPrefix'].strip()
     
-    fileChangeFlag = 0
+
+        return [fileInfo,lineInfoDict]
+
+def updateObjectId(fileContent,objectId,lineInfo,fileInfo):
+    if lineInfo['multiLine'] == 1:
+        linesWithId = appendObjectId(fileContent[lineInfo['multiLineEndingIndex']],objectId) +'\n'
+
+        fileContent[lineInfo['multiLineEndingIndex']] = linesWithId
+    elif lineInfo['lineIndex'] >= fileInfo['originalInputIndex'] or lineInfo['nestedElement'] == 1:
+        '''Object id addition handled if changes to line or prefix found in specific attribute lines'''
+        
+        linesWithId = appendObjectId(lineInfo['originalLine'],objectId) +'\n'
+
+        fileContent[lineInfo['lineIndex']] = linesWithId
+
+    return fileContent
+
+
+
+def parseLines(fileContents, fileInfoDict):
+    elementInstanceList = []
 
     for lines in fileContents:
-        prefixHandled = findPrefix(lines)
-        PrefixType = prefixHandled[1]
-        nestedElementFlag = prefixHandled[2]
-        foundRelatedId = None
 
-        if(PrefixType and '[[' not in lines):
-            fileChangeFlag = 1
+        #TODO: Don't have to pass contents to all the functions
+        lineInfo = getLineInfo(lines,fileContents,fileInfoDict)
 
-            lineWithoutPrefix = prefixHandled[0]
+        fileInfoDict = lineInfo[0]
+        lineInfoDict = lineInfo[1]
 
-            lineIndexToUpdate = fileContents.index(lines)
+        if lineInfoDict['processElement'] == 1:
+            '''Process Lines'''
+            if lineInfoDict['nestedElement'] == 1:
+                foundRelatedId = findRelatedId(fileContents,lineInfoDict['lineIndex'])
+            else:
+                foundRelatedId = None
 
-            if nestedElementFlag == 1:
-                foundRelatedId = findRelatedId(fileContents,lineIndexToUpdate)
+            if lineInfoDict['foundComments'] == 1:
+                foundComments = findComments(lineInfoDict['lineWithoutPrefix'])
 
-            foundComments = findComments(lineWithoutPrefix)
-            lineWithoutComments = foundComments[0]
-            commentLine = foundComments[1]
+                lineWithoutComments = foundComments[0]
+                commentLine = foundComments[1]
 
-            if lineWithoutComments != None:
-                lineWithoutPrefix = lineWithoutComments
+                lineInfoDict['lineWithoutPrefix'] = lineWithoutComments
+            else:
+                commentLine = None
             
-            returnedValues = generateInstance(PrefixType,lineWithoutPrefix,elementInstanceList,fileContents,foundRelatedId,commentLine)
+            returnedValues = generateInstance(lineInfoDict['prefixType'],lineInfoDict['lineWithoutPrefix'],elementInstanceList,fileContents,foundRelatedId,commentLine)
 
+            '''Object Id Assignment -- Break out into own function'''
             ObjectId = returnedValues[0]
             elementInstanceList = returnedValues[1]
 
-            linesWithId = appendObjectId(lines,ObjectId) +'\n'
+            fileContents = updateObjectId(fileContents,ObjectId,lineInfoDict,fileInfoDict)
 
-            '''Object id addition handled if changes to line or prefix found in specific attribute lines'''
-            if lineIndexToUpdate >= originalInputPosition or nestedElementFlag == 1:
-                fileContents[lineIndexToUpdate] = linesWithId
-
-    return [fileContents,fileChangeFlag,elementInstanceList]
+    return [fileContents,fileInfoDict,elementInstanceList]
 
 
 def getExistingData(fileDetails):
@@ -357,7 +483,7 @@ def main(optionalFilePath=None):
         filePath = getFilePath(optionalFilePath)
     except Exception as e:
         MessageToSend = 'Unable to get file path. Exiting: {}'.format(e)
-        errorHandling('Warning',MessageToSend)
+        messageHandling('Warning',MessageToSend)
         os._exit(1) # Exit immediately with an error status
 
     '''Read file'''
@@ -366,7 +492,7 @@ def main(optionalFilePath=None):
         unchangedFileContents = fileContents.copy()
     except Exception as e:
         MessageToSend = 'Unable to read file at path. Exiting: {}'.format(e)
-        errorHandling('Warning',MessageToSend)
+        messageHandling('Warning',MessageToSend)
         os._exit(1) # Exit immediately with an error status
 
     '''Find if file has been processed before'''
@@ -374,37 +500,36 @@ def main(optionalFilePath=None):
         flagData = getExistingData(fileContents)
     except Exception as e:
         MessageToSend = 'Unable to identify existing data: {}'.format(e)
-        errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)
+        messageHandling('Critical',MessageToSend,filePath,unchangedFileContents)
 
-    originalInputIndex = flagData[0]
-    existingData = flagData[1]
+    fileInfoDict = {'originalInputIndex':flagData[0],'existingData':flagData[1],'fileChangeFlag':0}
 
     '''Parse lines in file for changes'''
     try:
-        parsedValues = parseLines(fileContents, originalInputIndex)
+        parsedValues = parseLines(fileContents, fileInfoDict)
     except Exception as e:
         MessageToSend = 'Unable to parse text lines: {}'.format(e)
-        errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)
+        messageHandling('Critical',MessageToSend,filePath,unchangedFileContents)
     
     fileDetails = parsedValues[0]
-    fileChangeFlag = parsedValues[1]
+    fileInfoDict = parsedValues[1]
     elementInstanceList = parsedValues[2]
     
-    if fileChangeFlag == 1:
+    if fileInfoDict['fileChangeFlag'] == 1:
 
         '''Format new elements to print'''
         try:
-            fullFileListToPrint = printValue(elementInstanceList,existingData,fileDetails)
+            fullFileListToPrint = printValue(elementInstanceList,fileInfoDict['existingData'],fileDetails)
         except Exception as e:
             MessageToSend = 'Unable to organize formatted objects: {}'.format(filePath,e)
-            errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)   
+            messageHandling('Critical',MessageToSend,filePath,unchangedFileContents)   
 
         '''Write back to file'''
         try:
             readWriteFile(filePath,'W',fullFileListToPrint)
         except Exception as e:
             MessageToSend = 'Unable to update file at {}: {}'.format(filePath,e)
-            errorHandling('Critical',MessageToSend,filePath,unchangedFileContents)
+            messageHandling('Critical',MessageToSend,filePath,unchangedFileContents)
 
 
 if __name__=="__main__":
@@ -412,5 +537,4 @@ if __name__=="__main__":
         main()
     except Exception as e:
         MessageToSend = 'Unhandled error: {}'.format(e)
-        errorHandling('Unhandled',MessageToSend)
-
+        messageHandling('Unhandled',MessageToSend)
