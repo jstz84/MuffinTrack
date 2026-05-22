@@ -327,7 +327,7 @@ def getLineInfo(line, fileContent,fileInfo):
         multiLineWrapper = tagLookup('multiLineStart')
         commentIdentifier = tagLookup('comment')
 
-        strippedLine = line.strip(' ')
+        strippedLine = line.strip(' ').strip('\t')
 
         prefixHandled = findPrefix(strippedLine)
 
