@@ -41,6 +41,7 @@ Using MuffinTrack
    + Task notes should have the prefix "++".
    + Within a line that has a prefix listed above if "--" is found, the rest of the line will be considered a comment on the generated element
    + Multiline text should be enclosed in << and >>.
+   + If there is a comment tag -- followed by a multiline tag <<>>, the entire multiline tag contents will be made a comment
 
 ```
  - End Users want to start utilizing project on Dec. 1
@@ -56,7 +57,7 @@ Using MuffinTrack
 ```
 
 
-3. Run MuffinTrack as a CLI (`python3 -m MuffinTrack`). It will ask for the file path to the .txt file. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
+3. Run MuffinTrack as a CLI (`python3 -m MuffinTrack -f \file\path\here`). If no file path is specified, it will ask for the file path to the .txt file. MuffinTrack will parse the file, identifying the lines that need to be expanded into objects based on the prefixes found, and add those objects to the beginning of the file. Objects will be given a unique identifier that will trace back to the originating line so context for the object can easily be traced. The updated file will have a similar structure as the example below:
 ```
 ***Questions
 createDateTime: 2026-04-05 22:05:32.397309

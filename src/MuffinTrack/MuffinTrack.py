@@ -1,6 +1,7 @@
 from datetime import date,datetime
 import os
 import logging
+import argparse
 
 class Element:
     elementStatusDict = {
@@ -464,21 +465,21 @@ def getExistingData(fileDetails):
     return [OriginalInputIndex,ExistingData]
 
 def getFilePath(passedFilePath):
-    if passedFilePath != None:
+    if passedFilePath:
         FilePathInput = passedFilePath
     else:
         FilePathInput = input('Enter file path: ')
 
+    validFilePathEntered = 'N'
+
+    while validFilePathEntered == 'N':
         '''Standardize the slash direction. Replace double quotes'''
         FilePathInput = FilePathInput.replace("\\", "/").replace('"','')
 
-        validFilePathEntered = 'N'
-
-        while validFilePathEntered == 'N':
-            if os.path.exists(FilePathInput):
-                validFilePathEntered = "Y"
-            else:
-                FilePathInput = input('File {} does not exist. Please re-enter: '.format(FilePathInput))        
+        if os.path.exists(FilePathInput):
+            validFilePathEntered = "Y"
+        else:
+            FilePathInput = input('File {} does not exist. Please re-enter: '.format(FilePathInput))        
 
     return FilePathInput
 
@@ -496,7 +497,7 @@ def readWriteFile(filePath,actionNeeded,fileWithChanges=None):
         return None
 
 
-def main(optionalFilePath=None):
+def main(optionalFilePath):
     defineLogging()
 
     '''Get file path from input'''
@@ -555,7 +556,14 @@ def main(optionalFilePath=None):
 
 if __name__=="__main__":
     try:
-        main()
+
+        parser = argparse.ArgumentParser(prog='MuffinTrack', description='Text note organizer')
+
+        parser.add_argument('-f','--filepath',required=False)
+
+        inputArg = parser.parse_args()
+
+        main(inputArg.filepath)
     except Exception as e:
         MessageToSend = 'Unhandled error: {}'.format(e)
         messageHandling('Unhandled',MessageToSend)
