@@ -280,6 +280,11 @@ def combineMultiLines(startIndex,lineWithoutPrefix,fileContents):
     '''Starting on the line after the current one, see if another start tag is listed before the end tag found'''
     multiLineNextStartIndex = findNextInstanceOf('<<',startIndex + 1,fileContents,'lineIndex')
 
+    commentIdentifier = tagLookup('comment')
+
+    if commentIdentifier in lineWithoutPrefix:
+        multiLineComment = 1
+
     if multiLineNextStartIndex and multiLineNextStartIndex < multiLineEndIndex and multiLineNextStartIndex > startIndex:
         messageToLog = 'Multiline parsing opened, but never closed. Line Text: {}'.format(lineWithoutPrefix)
 
@@ -301,18 +306,19 @@ def combineMultiLines(startIndex,lineWithoutPrefix,fileContents):
 
     multiLineWithoutPrefix = multiLineWithoutPrefix.replace('<<','')
 
-    return [multiLineWithoutPrefix,multiLineEndIndex]
+    return [multiLineWithoutPrefix,multiLineEndIndex,multiLineComment]
 
 def findComments(line):
 
     commentIdentifier = tagLookup('comment')
     newLineIdentifier = '\n'
+    newLineCount = line.count(newLineIdentifier)
 
     identifierIndex = line.index(commentIdentifier)
 
     preIdentifier = line[0:identifierIndex]
 
-    if newLineIdentifier in line:
+    if newLineCount == 1:
         nextNewLineIndex = line.index(newLineIdentifier,identifierIndex)
         postIdentifier = line[identifierIndex:nextNewLineIndex].replace(commentIdentifier,'')
 
@@ -339,7 +345,10 @@ def getLineInfo(line, fileContent,fileInfo):
                         'foundComments':0,
                         'multiLineEndingIndex':None,
                         'lineWithoutPrefix':None,
-                        'originalLine':line}
+                        'originalLine':line,
+                        'multiLineCommentFlag': 0,
+                        'multilineComment': None,
+                        }
         
         if(lineInfoDict['prefixType'] and assignedIdReferenceWrapper not in line):
             '''Format lines'''
@@ -353,6 +362,9 @@ def getLineInfo(line, fileContent,fileInfo):
 
                 multiLineResults = combineMultiLines(lineInfoDict['lineIndex'],lineInfoDict['lineWithoutPrefix'],fileContent)
                 multiLineReturnedLine = multiLineResults[0]
+                multiLineCommentFlag = multiLineResults[2]
+                
+                lineInfoDict['multiLineCommentFlag'] = multiLineCommentFlag
 
                 lineInfoDict['multiLineEndingIndex'] = multiLineResults[1]
 
@@ -360,6 +372,9 @@ def getLineInfo(line, fileContent,fileInfo):
                     lineInfoDict['lineWithoutPrefix'] = multiLineReturnedLine
                 else:
                     lineInfoDict['processElement'] = 0
+
+                if multiLineCommentFlag == 1:
+                    lineInfoDict['multilineComment'] = multiLineReturnedLine
 
             if lineInfoDict['lineIndex'] < fileInfo['originalInputIndex']:
                 lineInfoDict['nestedElement'] = 1
@@ -406,13 +421,19 @@ def parseLines(fileContents, fileInfoDict):
             else:
                 foundRelatedId = None
 
-            if lineInfoDict['foundComments'] == 1:
+            if lineInfoDict['foundComments'] == 1 and lineInfoDict['multiLineCommentFlag']  == 0:
                 foundComments = findComments(lineInfoDict['lineWithoutPrefix'])
 
                 lineWithoutComments = foundComments[0]
-                commentLine = foundComments[1]
+                commentLine = foundComments[1]            
 
                 lineInfoDict['lineWithoutPrefix'] = lineWithoutComments
+            elif lineInfoDict['foundComments'] == 1 and lineInfoDict['multiLineCommentFlag']  == 1:
+                foundComments = findComments(lineInfoDict['multilineComment'])
+                
+                lineInfoDict['lineWithoutPrefix'] = foundComments[0]
+                commentLine = foundComments[1]    
+
             else:
                 commentLine = None
             
