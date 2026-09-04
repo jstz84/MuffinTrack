@@ -497,7 +497,7 @@ def readWriteFile(filePath,actionNeeded,fileWithChanges=None):
         return None
 
 
-def main(optionalFilePath):
+def main(optionalFilePath=None):
     defineLogging()
 
     '''Get file path from input'''
@@ -553,17 +553,18 @@ def main(optionalFilePath):
             MessageToSend = 'Unable to update file at {}: {}'.format(filePath,e)
             messageHandling('Critical',MessageToSend,filePath,unchangedFileContents)
 
+def cli():
+    parser = argparse.ArgumentParser(prog='MuffinTrack', description='Text note organizer')
+
+    parser.add_argument('-f','--filepath',required=False)
+
+    inputArg = parser.parse_args()
+
+    main(inputArg.filepath)
 
 if __name__=="__main__":
     try:
-
-        parser = argparse.ArgumentParser(prog='MuffinTrack', description='Text note organizer')
-
-        parser.add_argument('-f','--filepath',required=False)
-
-        inputArg = parser.parse_args()
-
-        main(inputArg.filepath)
+        cli()
     except Exception as e:
         MessageToSend = 'Unhandled error: {}'.format(e)
         messageHandling('Unhandled',MessageToSend)

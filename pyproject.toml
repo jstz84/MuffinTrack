@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "MuffinTrack"
-version = "2.0.2"
+version = "2.0.3"
 authors = [
   { name="Jessica Stultz"}
 ]
@@ -24,3 +24,6 @@ license-files = ["LICENSE.txt"]
 [project.urls]
 Homepage = "https://github.com/jstz84/MuffinTrack"
 Issues = "https://github.com/jstz84/MuffinTrack/issues"
+
+[project.scripts]
+muffintrack = "MuffinTrack.MuffinTrack:cli"

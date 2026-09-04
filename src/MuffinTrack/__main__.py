@@ -1,8 +1,8 @@
-from MuffinTrack import main,messageHandling
+from .MuffinTrack import cli,messageHandling
 
 if __name__=="__main__":    
     try:        
-        main()
+         cli()
     except Exception as e:
         MessageToSend = 'Unhandled error: {}'.format(e)
         messageHandling('Unhandled',MessageToSend)
